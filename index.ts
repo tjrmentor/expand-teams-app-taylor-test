@@ -4,14 +4,14 @@ import {
 } from "@aws-sdk/client-secrets-manager";
 import { App } from "octokit";
 
-const WEBHOOK_TOKEN_SECRET_NAME = "/github/expand-teams-app/webhook-secret";
-const PRIVATE_KEY_SECRET_NAME = "/github/expand-teams-app/private-key";
+const WEBHOOK_TOKEN_SECRET_NAME = "/github/expand-teams-taylor-test/webhook-secret";
+const PRIVATE_KEY_SECRET_NAME = "/github/expand-teams-taylor-test/private-key";
 
 const awsSecrets = await getAWSSecrets(
     WEBHOOK_TOKEN_SECRET_NAME,
     PRIVATE_KEY_SECRET_NAME);
 
-const APP_ID = 414851;
+const APP_ID = 411539;
 
 const app = new App({
     appId: APP_ID,

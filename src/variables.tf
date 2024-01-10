@@ -12,13 +12,13 @@ variable "environment" {
 
 variable "lambda_name" {
   type        = string
-  default     = "expand-teams-app"
+  default     = "expand-teams-taylor-test"
   description = "The name of the lambda function"
 }
 
 variable "image_name" {
   type        = string
-  default     = "expand-teams-app"
+  default     = "expand-teams-taylor-test"
   description = "The name of the lambda container image/ECR repository"
 }
 

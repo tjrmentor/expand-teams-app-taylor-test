@@ -5,5 +5,5 @@ data "aws_ecr_repository" "expand_teams_app" {
 }
 
 data "aws_iam_role" "lambda_role" {
-  name = "expand-teams-app-lambda-role"
+  name = "expand-teams-taylor-test-lambda-role"
 }
