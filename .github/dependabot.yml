@@ -1,0 +1,33 @@
+version: 2
+
+registries:
+  github:
+    type: git
+    url: https://github.com
+    username: x-access-token
+    password: ${{secrets.GH_TERRAFORM_RO_PAT}}
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/.github"
+    schedule:
+      interval: "weekly"
+    registries:
+      - github
+    groups:
+      actions:
+        update-types:
+          - "minor"
+          - "patch" 
+  
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    registries:
+      - github
+    groups:
+      actions:
+        update-types:
+          - "minor"
+          - "patch" 

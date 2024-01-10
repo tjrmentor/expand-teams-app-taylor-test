@@ -1,0 +1,108 @@
+name: expand-teams-app Release
+
+on:
+  workflow_dispatch
+  # push:
+  #   branches:
+  #     - main
+
+env:
+  SANDBOX_AWS_ACCOUNT_ID: 741190088140
+  DOCKER_IMAGE: expand-teams-app
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    environment: sandbox
+    outputs:
+      docker: ${{steps.filter.outputs.docker}}
+      gitversion: ${{steps.filter.outputs.gitversion}}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: dorny/paths-filter@4512585405083f25c027a35db413c2b3b9006d50
+        id: filter
+        with:
+          filters: |
+            docker:
+              - '.github/workflows/*'
+              - 'dist/*'
+              - 'Dockerfile'
+              - '*.json'
+            gitversion:
+              - 'GitVersion.yml'
+    
+  calculate-image-version:
+    runs-on: ubuntu-latest
+    environment: sandbox
+    outputs:
+      imageVersion: v${{ steps.gitversion.outputs.majorMinorPatch }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          fetch-depth: 0
+      - uses: gittools/actions/gitversion/setup@20cee55108f776dacf1f7867310750a2716ea62c
+        with:
+          versionSpec: '5.12.0'
+      - name: Determine Version
+        id:   gitversion
+        uses: gittools/actions/gitversion/execute@20cee55108f776dacf1f7867310750a2716ea62c
+
+  docker:
+    needs: [detect-changes, calculate-image-version]
+    if: needs.detect-changes.outputs.docker == 'true' && needs.detect-changes.outputs.gitversion == 'true' 
+    runs-on: ubuntu-latest
+    environment: sandbox
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Build Docker Image
+        run: docker build . -t ${{ env.DOCKER_IMAGE }}:${{ needs.calculate-image-version.outputs.imageVersion }}
+      
+      - name: Configure Sandbox AWS Credentials    
+        uses: aws-actions/configure-aws-credentials@010d0da01d0b5a38af31e9c3470dbfdabdecca3a
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::${{ env.SANDBOX_AWS_ACCOUNT_ID }}:role/github_action_ecr
+          role-session-name: gh-actions-ecr-repo=${{ github.event.repository.name }}-run=${{ github.run_id }}
+          role-duration-seconds: 900
+
+      - name: Push Docker Image
+        uses: HylandSoftware/trebuchet-action@9772f46161dbfa664417340245227224b9f9ee65
+        with:
+          action: push
+          repository: ${{ env.DOCKER_IMAGE }}
+          tag: ${{needs.calculate-image-version.outputs.imageVersion}}
+
+  terraform:
+    needs: [docker, calculate-image-version]
+    if: always()
+    runs-on: ubuntu-latest
+    environment: sandbox-apply
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Retrieve TFC secret from Vault
+        id: vault
+        uses: HylandSoftware/experience-vault-action@afaa6e84fb3fb1de245419c5902d23f2051eca12
+        with:
+          url: ${{ secrets.VAULT_URL }}
+          role: nucleus-sandbox-github-apply-token
+          namespace: nucleus/sandbox
+          secrets: |
+            github/data/apply TFC_TEAM_TOKEN | TFC_TEAM_TOKEN
+
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      
+      - uses: hashicorp/setup-terraform@633666f66e0061ca3b725c73b2ec20cd13a8fdd1
+        with:
+          cli_config_credentials_token: ${{ env.TFC_TEAM_TOKEN }}
+
+      - name: Apply Sandbox
+        working-directory: ./src
+        run: |
+          terraform init
+          terraform apply -auto-approve -input=false -var="image_version=${{ needs.calculate-image-version.outputs.imageVersion }}"

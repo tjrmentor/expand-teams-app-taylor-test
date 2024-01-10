@@ -1,0 +1,56 @@
+name: expand-teams-app CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate-terraform:
+    runs-on: ubuntu-latest
+    environment: sandbox-plan
+    permissions:
+      pull-requests: read
+      id-token: write
+      contents: read
+    steps:
+      - name: Retrieve TFC secret from Vault
+        id: vault
+        uses: HylandSoftware/experience-vault-action@afaa6e84fb3fb1de245419c5902d23f2051eca12
+        with:
+          url: ${{ secrets.VAULT_URL }}
+          role: nucleus-sandbox-github-plan-token
+          namespace: nucleus/sandbox
+          secrets: |
+            github/data/plan TFC_TEAM_TOKEN | TFC_TEAM_TOKEN
+
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          fetch-depth: 0
+      - uses: gittools/actions/gitversion/setup@20cee55108f776dacf1f7867310750a2716ea62c
+        with:
+          versionSpec: '5.12.0'
+      - name: Determine Version
+        id:   gitversion
+        uses: gittools/actions/gitversion/execute@20cee55108f776dacf1f7867310750a2716ea62c
+
+      - uses: hashicorp/setup-terraform@633666f66e0061ca3b725c73b2ec20cd13a8fdd1
+        with:
+          cli_config_credentials_token: ${{ env.TFC_TEAM_TOKEN }}
+      
+      - name: Terraform Format
+        working-directory: ./src
+        run: terraform fmt -check
+
+      - name: Terraform Init
+        working-directory: ./src
+        run: terraform init
+      
+      - name: Terraform Validate
+        working-directory: ./src
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ./src
+        run: |
+          terraform plan -input=false -var="image_version=v${{ steps.gitversion.outputs.majorMinorPatch }}"

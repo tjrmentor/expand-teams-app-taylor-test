@@ -1,0 +1,26 @@
+{
+  "name": "expand-teams-app",
+  "version": "1.0.0",
+  "description": "GitHub App to request reviews from individual team members",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HylandSoftware/expand-teams-app.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/HylandSoftware/expand-teams-app/issues"
+  },
+  "homepage": "https://github.com/HylandSoftware/expand-teams-app#readme",
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "3.435.0",
+    "octokit": "3.1.1"
+  },
+  "devDependencies": {
+    "typescript": "5.2.2"
+  }
+}
